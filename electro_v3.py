@@ -85,10 +85,10 @@ st.caption("Catalyst loading is a common term in the field of catalysis. It tell
 #j0_ref = 1e-6     # exchange current density in A/cm2. Usually in range 1e-7 to 1e-9
 with st.container(horizontal=True):
     st.write("IrO₂ Activation Energy at 25°C:")
-    j0_ref_E_act = st.text_input("Activation Energy",placeholder = "in J/mol",label_visibility="collapsed")
-st.caption("Activation energy is the minimum energy required to start the reaction. Usually in the range 60,000 to 80,000")
-j0_ref_E_act = float(j0_ref_E_act) if j0_ref_E_act else 0  # J/mol. Usually in the range 60000 to 80000
-
+    j0_ref_E_act = st.text_input("Activation Energy",placeholder = "in kJ/mol",label_visibility="collapsed")
+st.caption("Activation energy is the minimum energy required to start the reaction. Usually in the range 60 to 80 kJ/mol")
+j0_ref_E_act = float(j0_ref_E_act) if j0_ref_E_act else 0  # kJ/mol. Usually in the range 60 to 80 kJ/mol
+j0_ref_E_act = j0_ref_E_act*1000
 with st.container(horizontal=True):
     st.write("Asymmetric Factor (ß)")
     beta = st.text_input("beta",placeholder = "",label_visibility="collapsed")
