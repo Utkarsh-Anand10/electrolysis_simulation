@@ -87,8 +87,8 @@ with st.container(horizontal=True):
     st.write("IrO₂ Activation Energy at 25°C:")
     j0_ref_E_act = st.text_input("Activation Energy",placeholder = "in kJ/mol",label_visibility="collapsed")
 st.caption("Activation energy is the minimum energy required to start the reaction. Usually in the range 60 to 80 kJ/mol")
-j0_ref_E_act = float(j0_ref_E_act) if j0_ref_E_act else 0  # kJ/mol. Usually in the range 60 to 80 kJ/mol
-j0_ref_E_act = j0_ref_E_act*1000
+j0_ref_E_act = float(j0_ref_E_act)*1000 if j0_ref_E_act else 0  # kJ/mol. Usually in the range 60 to 80 kJ/mol
+#j0_ref_E_act = j0_ref_E_act*1000
 with st.container(horizontal=True):
     st.write("Asymmetric Factor (ß)")
     beta = st.text_input("beta",placeholder = "",label_visibility="collapsed")
