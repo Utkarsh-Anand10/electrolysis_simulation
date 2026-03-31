@@ -87,7 +87,7 @@ with st.container(horizontal=True):
     st.write("IrO₂ Activation Energy at 25°C:")
     j0_ref_E_act = st.text_input("Activation Energy",placeholder = "in kJ/mol",label_visibility="collapsed")
 st.caption("Activation energy is the minimum energy required to start the reaction. Usually in the range 60 to 80 kJ/mol")
-j0_ref_E_act = float(j0_ref_E_act)*1000 if j0_ref_E_act else 0  # kJ/mol. Usually in the range 60 to 80 kJ/mol
+j0_ref_E_act = float(j0_ref_E_act) if j0_ref_E_act else 0  # kJ/mol. Usually in the range 60 to 80 kJ/mol
 #j0_ref_E_act = j0_ref_E_act*1000
 with st.container(horizontal=True):
     st.write("Asymmetric Factor (ß)")
@@ -114,7 +114,7 @@ t_membrane = float(t_membrane) if t_membrane else 0       # membrane thickness i
 st.caption("It is the hydrated thickness of membrane")
 
 def Electrolysis_simulation(T_op,P_op,V_final,j_lim,Mass_activity_IrO2,Loading_IrO2,j0_ref_E_act,beta,wt_percent_membrane,EW,t_membrane):
-
+    j0_ref_E_act = j0_ref_E_act*1000
     def get_enthalpy(fluid,T,P):
         return PropsSI('Hmolar','T',(T+Kelvin),'P',P*1e5,fluid)
 
