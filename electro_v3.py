@@ -140,7 +140,7 @@ def Electrolysis_simulation(T_op,P_op,V_final,j_lim,Mass_activity_IrO2,Loading_I
     conductivity_membrane = (0.005139*water_content-0.00326)*exp(1268*(1/303-1/T_op_K))
     resistance_membrane = (t_membrane*1e-4)/conductivity_membrane     # units in ohm.cm2
 
-    j0 = Loading_IrO2*Mass_activity_IrO2*exp(-j0_ref_E_act/(R*1000)*(1/T_op_K-1/(St_T+Kelvin)))
+    j0 = Loading_IrO2*Mass_activity_IrO2*exp(-j0_ref_E_act/R*(1/T_op_K-1/(St_T+Kelvin)))
 
     def current_density(eta):
         A = j0*(exp(((1-beta)*n*F*eta)/(R*(T_op_K)))-exp((-beta*n*F*eta)/(R*(T_op_K))))
