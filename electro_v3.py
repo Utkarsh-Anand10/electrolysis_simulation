@@ -333,7 +333,7 @@ if multi_scalar:
 # -------------------------
 # OPTIONAL POLISH
 # -------------------------
-df_results.iloc[:, 1:] = df_results.iloc[:, 1:].applymap(lambda x: round(x, 5))
+df_results.iloc[:, 1:] = df_results.iloc[:, 1:].round(5)
 units = {
     "Enthalpy of Reaction": "J/mol",
     "Thermoneutral Voltage": "Volts",
