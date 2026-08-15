@@ -7,7 +7,7 @@ import uuid
 import pandas as pd
 
 st.sidebar.write("Some Default Values")
-Kelvin=st.sidebar.text_input("Kelvin conversion",value='273.15')
+Kelvin=st.sidebar.text_input("Kelvin conversion",value='273.153')
 Kelvin = float(Kelvin)
 
 Hf_Water = st.sidebar.text_input("Enthalpy (△H) of Water Formation at Standard Condition (in J/mol)",value='-285840')
@@ -85,10 +85,10 @@ st.caption("Catalyst loading is a common term in the field of catalysis. It tell
 #j0_ref = 1e-6     # exchange current density in A/cm2. Usually in range 1e-7 to 1e-9
 with st.container(horizontal=True):
     st.write("IrO₂ Activation Energy at 25°C:")
-    j0_ref_E_act = st.text_input("Activation Energy",placeholder = "in kJ/mol",label_visibility="collapsed")
-st.caption("Activation energy is the minimum energy required to start the reaction. Usually in the range 60 to 80 kJ/mol")
-j0_ref_E_act = float(j0_ref_E_act) if j0_ref_E_act else 0  # kJ/mol. Usually in the range 60 to 80 kJ/mol
-#j0_ref_E_act = j0_ref_E_act*1000
+    j0_ref_E_act = st.text_input("Activation Energy",placeholder = "in J/mol",label_visibility="collapsed")
+st.caption("Activation energy is the minimum energy required to start the reaction. Usually in the range 60,000 to 80,000")
+j0_ref_E_act = float(j0_ref_E_act) if j0_ref_E_act else 0  # J/mol. Usually in the range 60000 to 80000
+
 with st.container(horizontal=True):
     st.write("Asymmetric Factor (ß)")
     beta = st.text_input("beta",placeholder = "",label_visibility="collapsed")
@@ -113,8 +113,14 @@ with st.container(horizontal=True):
 t_membrane = float(t_membrane) if t_membrane else 0       # membrane thickness in microns (1e-6m)
 st.caption("It is the hydrated thickness of membrane")
 
-def Electrolysis_simulation(T_op,P_op,V_final,j_lim,Mass_activity_IrO2,Loading_IrO2,j0_ref_E_act,beta,wt_percent_membrane,EW,t_membrane):
-    j0_ref_E_act = j0_ref_E_act*1000
+with st.container(horizontal=True):
+    st.write("Faradaic Efficiency:")
+    f_efficiency = st.text_input("F Efficiency",placeholder = "usually in the range 0.95 to 0.99",label_visibility="collapsed") 
+f_efficiency = float(f_efficiency) if f_efficiency else 0       # dimensionless, fraction of current that produces H2
+st.caption("It tells how much loss is being occurred during electron transfer. Higher the efficiency, lower the loss.")
+
+def Electrolysis_simulation(T_op,P_op,V_final,j_lim,Mass_activity_IrO2,Loading_IrO2,j0_ref_E_act,beta,wt_percent_membrane,EW,t_membrane,f_efficiency):
+
     def get_enthalpy(fluid,T,P):
         return PropsSI('Hmolar','T',(T+Kelvin),'P',P*1e5,fluid)
 
@@ -155,19 +161,46 @@ def Electrolysis_simulation(T_op,P_op,V_final,j_lim,Mass_activity_IrO2,Loading_I
         eta_ohm = j*resistance_membrane
         return Reversible_Voltage + eta + eta_ohm + eta_mt - V_t
 
+    h2_flow = f_efficiency*j_lim*3600/(n*F)     # mol/hr/cm2
+
     sol_eta = list(map(lambda vt:root_scalar(solve_eta,x0=0, x1=0.1, method='secant',args=(vt)).root,V_t))
     sol_current = list(map(lambda k:current_density(k),sol_eta))
     eta_mt = list(map(lambda y:((R*T_op_K)*log(j_lim/(j_lim-y)))/(n*F),sol_current))
     eta_ohm = list(map(lambda y:y*resistance_membrane,sol_current))
 
-    return V_t,sol_current,sol_eta,eta_mt,eta_ohm,Reaction_del_H,Thermoneutral_Voltage,Reaction_del_G,Reversible_Voltage,conductivity_membrane
+    return V_t,sol_current,sol_eta,eta_mt,eta_ohm,Reaction_del_H,Thermoneutral_Voltage,Reaction_del_G,Reversible_Voltage,conductivity_membrane,h2_flow
 
-input_dictionary = {"Operating Temperature":T_op,"Operating Pressure":P_op,"Final Operating Voltage":V_final,"Limiting Current Density":j_lim,"Mass Activity of IrO₂":Mass_activity_IrO2,"IrO₂ Loading":Loading_IrO2,"IrO₂ Activation Energy at 25°C":j0_ref_E_act,"Asymmetric Factor (ß)":beta,"Membrane Weight%":wt_percent_membrane,"Membrane Equivalent Weight(EW)":EW,"Membrane Thickness":t_membrane}
+input_dictionary = {"Operating Temperature":T_op,"Operating Pressure":P_op,"Final Operating Voltage":V_final,"Limiting Current Density":j_lim,"Mass Activity of IrO₂":Mass_activity_IrO2,"IrO₂ Loading":Loading_IrO2,"IrO₂ Activation Energy at 25°C":j0_ref_E_act,"Asymmetric Factor (ß)":beta,"Membrane Weight%":wt_percent_membrane,"Membrane Equivalent Weight(EW)":EW,"Membrane Thickness":t_membrane,"Faradaic Efficiency":f_efficiency}
+
+# Units for each operating parameter, used to annotate multi-factor inputs, table columns, and plot legends
+input_units = {
+    "Operating Temperature": "°C",
+    "Operating Pressure": "bar",
+    "Final Operating Voltage": "Volts",
+    "Limiting Current Density": "A/cm²",
+    "Mass Activity of IrO₂": "A/mg",
+    "IrO₂ Loading": "mg/cm²",
+    "IrO₂ Activation Energy at 25°C": "J/mol",
+    "Asymmetric Factor (ß)": "",
+    "Membrane Weight%": "",
+    "Membrane Equivalent Weight(EW)": "g/mol",
+    "Membrane Thickness": "µm",
+    "Faradaic Efficiency": ""
+}
 
 
 results = list(Electrolysis_simulation(*list(input_dictionary.values())))
 
-output_dictionary = {"Potential (V)":results[0],"Current Density (j)":results[1],"Activation Overpotential (ɳ)":results[2],"Mass Transport Losses (ɳₘₜ)":results[3],"Ohmic Losses (ɳₒₕₘ)":results[4],"Enthalpy of Reaction":results[5],"Thermoneutral Voltage":results[6],"Gibbs Free Energy of Reaction":results[7],"Reversible Voltage":results[8],"Membrane Conductivity":results[9]}
+output_dictionary = {"Potential (V)":results[0],"Current Density (j)":results[1],"Activation Overpotential (ɳ)":results[2],"Mass Transport Losses (ɳₘₜ)":results[3],"Ohmic Losses (ɳₒₕₘ)":results[4],"Enthalpy of Reaction":results[5],"Thermoneutral Voltage":results[6],"Gibbs Free Energy of Reaction":results[7],"Reversible Voltage":results[8],"Membrane Conductivity":results[9],"Hydrogen Flow Density":results[10]}
+
+# Units for the quantities selectable as plot X/Y axes
+axis_units = {
+    "Potential (V)": "Volts",
+    "Current Density (j)": "A/cm²",
+    "Activation Overpotential (ɳ)": "Volts",
+    "Mass Transport Losses (ɳₘₜ)": "Volts",
+    "Ohmic Losses (ɳₒₕₘ)": "Volts"
+}
 
 #st.write(Electrolysis_simulation(*list(input_dictionary.values()))[1])
 
@@ -191,7 +224,8 @@ single_value_keys = [
     "Thermoneutral Voltage",
     "Gibbs Free Energy of Reaction",
     "Reversible Voltage",
-    "Membrane Conductivity"
+    "Membrane Conductivity",
+    "Hydrogen Flow Density"
 ]
 
 base_results = {key: output_dictionary[key] for key in single_value_keys}
@@ -210,7 +244,8 @@ if multi_scalar:
         ["Operating Temperature", "Operating Pressure", "Final Operating Voltage",
          "Limiting Current Density", "Mass Activity of IrO₂", "IrO₂ Loading",
          "IrO₂ Activation Energy at 25°C", "Asymmetric Factor (ß)",
-         "Membrane Weight%", "Membrane Equivalent Weight(EW)", "Membrane Thickness"],
+         "Membrane Weight%", "Membrane Equivalent Weight(EW)", "Membrane Thickness",
+         "Faradaic Efficiency"],
         horizontal=True
     )
 
@@ -228,9 +263,11 @@ if multi_scalar:
         col1, col2 = st.columns([5,1])
     
         with col1:
+            unit_scalar = input_units.get(multi_factor_scalar, "")
             item["value"] = st.text_input(
                 "Value",
                 value=item["value"],
+                placeholder=f"in {unit_scalar}" if unit_scalar else "",
                 key=f"scalar_val_{vid}"
             )
     
@@ -253,9 +290,15 @@ if multi_scalar:
 # -------------------------
 # BUILD TABLE
 # -------------------------
+if multi_scalar:
+    unit_scalar = input_units.get(multi_factor_scalar, "")
+    base_case_label = f"{input_dictionary[multi_factor_scalar]} {unit_scalar}".strip()
+else:
+    base_case_label = "Base Case"
+
 df_results = pd.DataFrame({
     "Parameter": single_value_keys,
-    "Base Case": [base_results[k] for k in single_value_keys]
+    base_case_label: [base_results[k] for k in single_value_keys]
 })
 
 # -------------------------
@@ -282,22 +325,22 @@ if multi_scalar:
         results = list(Electrolysis_simulation(*list(temp_input.values())))
         temp_output = dict(zip(output_dictionary.keys(), results))
 
-        col_name = f"{multi_factor_scalar}={val}"
+        unit_scalar = input_units.get(multi_factor_scalar, "")
+        col_name = f"{multi_factor_scalar}={val} {unit_scalar}".strip()
 
         df_results[col_name] = [temp_output[k] for k in single_value_keys]
 
 # -------------------------
 # OPTIONAL POLISH
 # -------------------------
-df_results.iloc[:, 1:] = df_results.iloc[:, 1:].apply(
-    lambda col: col.map(lambda x: round(x, 5))
-)
+df_results.iloc[:, 1:] = df_results.iloc[:, 1:].applymap(lambda x: round(x, 5))
 units = {
     "Enthalpy of Reaction": "J/mol",
-    "Thermoneutral Voltage": "V",
+    "Thermoneutral Voltage": "Volts",
     "Gibbs Free Energy of Reaction": "J/mol",
-    "Reversible Voltage": "V",
-    "Membrane Conductivity": "S/cm"
+    "Reversible Voltage": "Volts",
+    "Membrane Conductivity": "S/cm",
+    "Hydrogen Flow Density": "mol/hr/cm2"
 }
 
 df_results["Unit"] = df_results["Parameter"].map(units)
@@ -391,7 +434,8 @@ for idx, plot in enumerate(st.session_state.plots):
             ["Operating Temperature", "Operating Pressure", "Final Operating Voltage",
              "Limiting Current Density", "Mass Activity of IrO₂", "IrO₂ Loading",
              "IrO₂ Activation Energy at 25°C", "Asymmetric Factor (ß)",
-             "Membrane Weight%", "Membrane Equivalent Weight(EW)", "Membrane Thickness"],
+             "Membrane Weight%", "Membrane Equivalent Weight(EW)", "Membrane Thickness",
+             "Faradaic Efficiency"],
             key=f"factor_{pid}", horizontal=True
         )
 
@@ -404,9 +448,11 @@ for idx, plot in enumerate(st.session_state.plots):
         for v_idx, val in enumerate(plot.get("values", [])):
             col_val, col_remove_val = st.columns([5, 1])
             with col_val:
+                unit_plot = input_units.get(plot["multi_factor"], "")
                 plot["values"][v_idx] = st.text_input(
                     f"Value {v_idx+1}",
                     value=plot["values"][v_idx],
+                    placeholder=f"in {unit_plot}" if unit_plot else "",
                     key=f"value_{pid}_{v_idx}"
                 )
             with col_remove_val:
@@ -424,14 +470,30 @@ for idx, plot in enumerate(st.session_state.plots):
         x_data = output_dictionary[plot["x"]]
 
         # Set y-axis label: first y-parameter if multiple, else the single one
-        ax.set_ylabel(plot["y"][0] if len(plot["y"]) > 1 else plot["y"][0])
-        ax.set_xlabel(plot["x"])
+        x_unit = axis_units.get(plot["x"], "")
+        ax.set_xlabel(f"{plot['x']} ({x_unit})" if x_unit else plot["x"])
+
+        if len(plot["y"]) > 1:
+            y_units_used = {axis_units.get(y, "") for y in plot["y"]}
+            if len(y_units_used) == 1 and next(iter(y_units_used)):
+                ax.set_ylabel(f"Value ({next(iter(y_units_used))})")
+            else:
+                ax.set_ylabel("Value")
+        else:
+            y_unit = axis_units.get(plot["y"][0], "")
+            ax.set_ylabel(f"{plot['y'][0]} ({y_unit})" if y_unit else plot["y"][0])
 
         # --- Base case curves ---
+        if plot.get("multi_exp", False) and plot.get("multi_factor"):
+            base_unit_plot = input_units.get(plot["multi_factor"], "")
+            base_case_label_plot = f"{input_dictionary[plot['multi_factor']]} {base_unit_plot}".strip()
+        else:
+            base_case_label_plot = "Base Case"
+
         for y in plot["y"]:
             y_data = output_dictionary[y]
-            # legend = parameter name if multiple y's, else "Base Case"
-            label = y if len(plot["y"]) > 1 else "Base Case"
+            # legend = parameter name if multiple y's, else the base case value/unit
+            label = y if len(plot["y"]) > 1 else base_case_label_plot
             ax.plot(x_data, y_data, label=label, linewidth=2)
 
         # --- Multi-factor experiment curves ---
@@ -448,12 +510,14 @@ for idx, plot in enumerate(st.session_state.plots):
                 results = list(Electrolysis_simulation(*list(temp_input.values())))
                 temp_output = dict(zip(output_dictionary.keys(), results))
 
+                unit_plot = input_units.get(plot["multi_factor"], "")
+                unit_str = f" {unit_plot}" if unit_plot else ""
                 for y in plot["y"]:
                     y_data = temp_output[y]
                     if len(plot["y"]) > 1:
-                        label_name = f"{y} ({plot['multi_factor']}={val})"
+                        label_name = f"{y} ({plot['multi_factor']}={val}{unit_str})"
                     else:
-                        label_name = f"{plot['multi_factor']}={val}"
+                        label_name = f"{plot['multi_factor']}={val}{unit_str}"
                     ax.plot(x_data, y_data, label=label_name)
 
             ax.legend()
